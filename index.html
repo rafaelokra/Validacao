@@ -3,33 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <title>Calculadora RBF Motos - Licenciamento</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter&family=Roboto+Mono&display=swap" rel="stylesheet">
     <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            background-color: rgb(32, 32, 32);
+            color: rgb(255, 170, 0);
+        }
+
         body {
-            font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
         }
+
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 1px 1px 8px rgb(255, 170, 0);
+            border-radius: 5px;
+            padding: 20px;
+            width: calc(100% - 800px);
+            max-width: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
             text-align: center;
         }
-        input, button {
-            margin: 10px 0;
-            padding: 10px;
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input {
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            padding: 12px 10px;
+            font-family: 'Roboto Mono', monospace;
+            text-align: center;
             width: 100%;
             box-sizing: border-box;
+            background-color: rgb(50, 50, 50);
+            border: 1px solid rgb(255, 170, 0);
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: rgb(126, 126, 126);
+           font-size: 16px;
+            color: black;
+            padding: 17px 27px;
+            border: none;
+            border-radius: 5px;
+            margin: 10px 0;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        button:active {
+            background-color: rgb(255, 170, 0);
+            color: white;
+        }
+
+        #mensagem {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        @media (max-width: 320px) {
+            input, button {
+                width: 100%;
+                padding: 10px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Valide sua Licença RBF Motos</h2>
+        <h2>Validação de Licença RBF Motos</h2>
         <input type="text" id="licenseKey" placeholder="Digite sua chave de licença">
         <button onclick="validarLicenca()">Validar</button>
         <p id="mensagem"></p>
@@ -41,8 +100,8 @@
             'cliente1@exemplo.com': {
                 chave: 'RBF2024-MOTO-123456',
                 dataExpiracao: new Date('2025-12-31').getTime(),
-                dispositivosPermitidos: 3,
-                dispositivosUtilizados: []
+                dispositivosPermitidos: 1, // Apenas um dispositivo permitido
+                dispositivoAutorizado: null // Dispositivo autorizado inicial
             }
         };
 
@@ -51,9 +110,43 @@
                 navigator.userAgent + 
                 screen.width + 
                 screen.height + 
-                navigator.language
+                navigator.language +
+                navigator.platform
             );
         }
+
+        // Verifica se já foi validado anteriormente
+        function verificarValidacaoPrevia() {
+            const identificadorDispositivo = gerarIdentificadorDispositivo();
+            const licencaEncontrada = Object.entries(licencas).find(
+                ([email, licenca]) => licenca.chave === localStorage.getItem('rbfmotosLicenseKey')
+            );
+
+            if (licencaEncontrada) {
+                const [email, licenca] = licencaEncontrada;
+                
+                // Verifica se o dispositivo atual é o dispositivo autorizado
+                if (licenca.dispositivoAutorizado && 
+                    licenca.dispositivoAutorizado !== identificadorDispositivo) {
+                    
+                    // Dispositivo diferente - bloquear acesso
+                    document.getElementById('mensagem').style.color = 'rgb(255, 70, 70)';
+                    document.getElementById('mensagem').textContent = 
+                        'Erro: Esta licença já está vinculada a outro dispositivo. ' +
+                        'Entre em contato com o suporte para mais informações.';
+                    return false;
+                }
+
+                // Se for o primeiro uso ou o mesmo dispositivo, permite
+                return true;
+            }
+            return false;
+        }
+
+        // Chamada inicial para verificar validação prévia
+        window.onload = function() {
+            verificarValidacaoPrevia();
+        };
 
         function validarLicenca() {
             const chave = document.getElementById('licenseKey').value;
@@ -65,7 +158,7 @@
             );
 
             if (!licencaEncontrada) {
-                mensagem.style.color = 'red';
+                mensagem.style.color = 'rgb(255, 70, 70)';
                 mensagem.textContent = 'Chave de licença inválida!';
                 return;
             }
@@ -75,27 +168,32 @@
 
             // Verificar expiração
             if (dataAtual > licenca.dataExpiracao) {
-                mensagem.style.color = 'red';
+                mensagem.style.color = 'rgb(255, 70, 70)';
                 mensagem.textContent = 'Licença expirada. Renove sua assinatura.';
                 return;
             }
 
-            // Verificar limite de dispositivos
+            // Gerar identificador do dispositivo atual
             const identificadorDispositivo = gerarIdentificadorDispositivo();
             
-            if (!licenca.dispositivosUtilizados.includes(identificadorDispositivo)) {
-                if (licenca.dispositivosUtilizados.length >= licenca.dispositivosPermitidos) {
-                    mensagem.style.color = 'red';
-                    mensagem.textContent = 'Limite de dispositivos excedido!';
-                    return;
-                }
-
-                // Adicionar novo dispositivo
-                licenca.dispositivosUtilizados.push(identificadorDispositivo);
+            // Verificar se já tem um dispositivo autorizado
+            if (licenca.dispositivoAutorizado && 
+                licenca.dispositivoAutorizado !== identificadorDispositivo) {
+                mensagem.style.color = 'rgb(255, 70, 70)';
+                mensagem.textContent = 
+                    'Erro: Esta licença já está vinculada a outro dispositivo. ' +
+                    'Entre em contato com o suporte para mais informações.';
+                return;
             }
 
+            // Definir dispositivo autorizado
+            licenca.dispositivoAutorizado = identificadorDispositivo;
+
+            // Salvar chave de licença no localStorage
+            localStorage.setItem('rbfmotosLicenseKey', chave);
+
             // Licença válida - redirecionar para o site
-            mensagem.style.color = 'green';
+            mensagem.style.color = 'rgb(0, 255, 0)';
             mensagem.textContent = 'Licença válida! Redirecionando...';
             
             setTimeout(() => {
