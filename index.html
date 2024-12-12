@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora RBF Motos - Licenciamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Validação de Licença RBF Motos</h2>
+        <input type="text" id="licenseKey" placeholder="Digite sua chave de licença">
+        <button onclick="validarLicenca()">Validar</button>
+        <p id="mensagem"></p>
+    </div>
+
+    <script>
+        // Banco de licenças (em produção, isso seria no backend)
+        const licencas = {
+            'cliente1@exemplo.com': {
+                chave: 'RBF2024-MOTO-123456',
+                dataExpiracao: new Date('2025-12-31').getTime(),
+                dispositivosPermitidos: 3,
+                dispositivosUtilizados: []
+            }
+        };
+
+        function gerarIdentificadorDispositivo() {
+            return btoa(
+                navigator.userAgent + 
+                screen.width + 
+                screen.height + 
+                navigator.language
+            );
+        }
+
+        function validarLicenca() {
+            const chave = document.getElementById('licenseKey').value;
+            const mensagem = document.getElementById('mensagem');
+
+            // Encontrar licença
+            const licencaEncontrada = Object.entries(licencas).find(
+                ([email, licenca]) => licenca.chave === chave
+            );
+
+            if (!licencaEncontrada) {
+                mensagem.style.color = 'red';
+                mensagem.textContent = 'Chave de licença inválida!';
+                return;
+            }
+
+            const [email, licenca] = licencaEncontrada;
+            const dataAtual = new Date().getTime();
+
+            // Verificar expiração
+            if (dataAtual > licenca.dataExpiracao) {
+                mensagem.style.color = 'red';
+                mensagem.textContent = 'Licença expirada. Renove sua assinatura.';
+                return;
+            }
+
+            // Verificar limite de dispositivos
+            const identificadorDispositivo = gerarIdentificadorDispositivo();
+            
+            if (!licenca.dispositivosUtilizados.includes(identificadorDispositivo)) {
+                if (licenca.dispositivosUtilizados.length >= licenca.dispositivosPermitidos) {
+                    mensagem.style.color = 'red';
+                    mensagem.textContent = 'Limite de dispositivos excedido!';
+                    return;
+                }
+
+                // Adicionar novo dispositivo
+                licenca.dispositivosUtilizados.push(identificadorDispositivo);
+            }
+
+            // Licença válida - redirecionar para o site
+            mensagem.style.color = 'green';
+            mensagem.textContent = 'Licença válida! Redirecionando...';
+            
+            setTimeout(() => {
+                // Redireciona para o site específico
+                window.location.href = 'https://rafaelokra.github.io/Calculadora-rbfmotos/';
+            }, 2000);
+        }
+
+        // Proteções adicionais
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
